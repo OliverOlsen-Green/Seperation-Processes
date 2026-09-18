@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import scipy as sp
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
@@ -66,8 +67,6 @@ class UNIQUAC:
         for i in range(0, len(theta)):
             for j in range(0, len(theta)):
                 E_i[i] += theta[j] * T_ji[j][i]
-        # replace set up  have now with this
-        print(E_i)
 
         # third sum
         C_i = np.zeros(len(theta))
@@ -105,7 +104,7 @@ class UNIQUAC:
     def RR_LLE(E,z,x_I, x_II,F,r,q,R,T,u,Model):
         #find the gamma values for each of the respective phases
         gamma_I = UNIQUAC.gamma(x_I,r,q,R,T,u)
-        gamma_II = UNIQUAC.gamma(x_I, r, q, R, T, u)
+        gamma_II = UNIQUAC.gamma(x_II, r, q, R, T, u)
 
         #find the K-values
         K = np.zeros(len(x_I))
@@ -118,7 +117,7 @@ class UNIQUAC:
         else:
             #eq K values using the UNIQUAC
             for i in range(0, len(x_I)):
-                K[i] = (gamma_I[i] * x_I[i]) / (gamma_I[i] *x_II[i])
+                K[i] = gamma_II[i]/ gamma_I[i]
 
         #unpack for use in f-solve
         E = E[0]
@@ -144,10 +143,10 @@ class UNIQUAC:
         Error = 1
         epsillon = 1e-10
         Iterations = 0
-        max_ITER = 10
+        max_ITER = 1000
 
-        x_I = x_i
-        x_II = x_ii
+        x_I = x_i.copy()
+        x_II = x_ii.copy()
 
 
         while Error > epsillon and max_ITER > Iterations:
@@ -166,7 +165,7 @@ class UNIQUAC:
             else:
                 # eq K values using the UNIQUAC
                 for i in range(0, len(x_I)):
-                    K[i] = (gamma_I[i] * x_I[i]) / (gamma_I[i] * x_II[i])
+                    K[i] = gamma_II[i]/ gamma_I[i]
 
             #find the value of the extract based on inital guesses (inputs)
             E_final = fsolve(UNIQUAC.RR_LLE,E,args=(z,x_I, x_II,F,r,q,R,T,u,Model))
@@ -186,7 +185,8 @@ class UNIQUAC:
             for i in range(0,len(x_I)):
                 error_I = abs(x_I_new[i] - x_I[i])
                 error_II = abs(x_II_new[i] - x_II[i])
-                Error = error + np.maximum(error_I, error_II)
+                error += np.maximum(error_I, error_II)
+            Error = error
 
             Iterations = Iterations + 1
             x_I = x_I_new.copy()
@@ -194,7 +194,41 @@ class UNIQUAC:
 
         return x_I, x_II, Iterations
 
+    def plait_point(E,z,x_i, x_ii,F,r,q,R,T,u,Model):
 
+        X_I = x_i.copy()
+        X_II = x_ii.copy()
+        Z = z.copy()
+        Error = 1
+        epsillon = 1e-4
+        steps = 0
+        max_steps = 133
+        #store X_I and X_II for plotting tie lines
+        history_I = [X_i.copy()]
+        history_II = [X_ii.copy()]
+        while Error > epsillon:
+
+            x_I_new, x_II_new, iterations = UNIQUAC.liquid_comps(E, Z, X_I, X_II, 1, r, q, R, T, u, Model)
+
+            # increase of acetone
+            a_I = 0.0015
+            Z[1] = Z[1] + a_I
+            Z[0] = Z[0] - (a_I / 2)
+            Z[2] = Z[2] - (a_I / 2)
+            error = 0
+            error_I = 0.0
+
+            for i in range(0,len(X_I)):
+                error_I = abs(x_I_new[i] - x_II_new[i])
+                error += error_I
+            Error = error
+
+            X_I = x_I_new.copy()
+            X_II = x_II_new.copy()
+            history_I.append(X_I.copy())
+            history_II.append(X_II.copy())
+            steps = steps + 1
+        return X_I, X_II, history_I, history_II
 
 
 
@@ -223,16 +257,35 @@ X_i = np.array([0.499999,0.000001,0.5])
 X_ii = np.array([0.2,0.1,0.7])
 r = np.array([3.1878,2.5735,0.92])
 q = np.array([2.4,2.336,1.4])
-z = np.array([0.499999,0.000001,0.5])
+z = np.array([(0.5-(0.5e-10)),1e-10,0.5-(0.5e-10)])
 
 E = 0.5
 model = "UNIQUAC"
 x_I, x_II, iterations = UNI.liquid_comps(E,z,X_i,X_ii,1,r,q,R,T,u,model)
 
-print(x_I, "composition of Extract")
+"""print(x_I, "composition of Extract")
 print(x_II, "composition of Raffinate")
 print(iterations, "Iterations")
 
 print(np.sum(x_I),"sum of Liquid phase 1")
 
 print(np.sum(x_II), "sum of liquid phase 2")
+"""
+
+X_I_plait, X_II_plait,History_I,History_II = UNI.plait_point(E,z,x_I,x_II,1,r,q,R,T,u,model)
+
+print(X_I_plait)
+print(X_II_plait)
+
+print(np.sum(X_I_plait),"sum of X_I")
+print(np.sum(X_II_plait),"sum of X_II")
+
+dh_I = pd.DataFrame(History_I)
+dh_II = pd.DataFrame(History_II)
+#x = np.array([1/3,1/3,1/3])
+#gamma = UNI.gamma(x,r,q,R,T,u)
+
+#print(gamma)
+
+dh_I.to_csv("Phase_1_data.csv", index=False)
+dh_II.to_csv("Phase_2_data.csv", index=False)
