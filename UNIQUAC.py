@@ -73,8 +73,6 @@ class UNIQUAC:
             sum_1 += x[j] * l_j[j]
         term_1 = np.zeros(cols)
         for i in range(0,cols):
-            phi_over_x = Rred[i]  # = phi[i]/x[i], safe even when x[i] == 0
-            theta_over_phi = Qred[i] / Rred[i]
             ln_gamma[i] = math.log(Rred[i]) + (Z/2) * q[i] * math.log(Qred[i]/Rred[i]) + \
                           l_i[i] - (Rred[i] * sum_1) + (q[i] * (1 - math.log(E_i[i]) - D_i[i]))
 
