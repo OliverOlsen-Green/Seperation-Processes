@@ -7,34 +7,6 @@ from scipy.integrate import quad_vec
 import math
 #create class for the solving RR using UNIQUAC params
 class UNIQUAC:
-
-    def segment_fraction(x,r):
-        #length of array x
-        length = len(x)
-        #initalise the segment fraciton and the denominator
-        phi = np.zeros(length)
-        denominator = 0.0
-        sum = np.sum(x * r)
-        for i in range(0,length):
-            denominator += x[i] * r[i]
-        for i in range(0,length):
-            phi[i] = (x[i] * r[i]) / denominator
-
-        return phi
-
-    def area_fraction(x,q):
-        # length of array x
-        length = len(x)
-        # initalise the area fraciton and the denominator
-        theta = np.zeros(length)
-        denominator = 0.0
-        for i in range(0,length):
-            denominator += (x[i] * q[i])
-        for i in range(0,length):
-            theta[i] = (x[i] * q[i]) / denominator
-
-        return theta
-
     def binary_interaction(u,R,T):
         # rows
         rows = u.shape[0]
@@ -48,18 +20,27 @@ class UNIQUAC:
 
     def gamma(x,r,q,R,T,u):
         length = len(x)
-        phi = UNIQUAC.segment_fraction(x,r)
-        theta = UNIQUAC.area_fraction(x,q)
+        x = x / np.sum(x)
+        Z = 10
+        Qsum = np.sum(x*q)
+        Rsum = np.sum(x*r)
+        Qred = q / Qsum
+        Rred = r/ Rsum
+
+        theta = x * Qred
+
+        Qfact = Z * Qsum
+        Qfr = 1 - Qfact
+
         T_ji = UNIQUAC.binary_interaction(u,R,T)
         #initalise vectors of gamma
         ln_gamma = np.zeros(length)
-        Z = 10.0
+
         l_j = np.zeros(length)
         l_i = np.zeros(length)
         #for the for loops
         rows = u.shape[0]
         cols = u.shape[-1]
-
         #initalise the sum and calculate vectors of 2,3 and 4
         sum_1 = 0.00
         E_i = np.zeros(len(theta))
@@ -90,10 +71,12 @@ class UNIQUAC:
         #loops that calculate each of the sums utilised
         for j in range(0,rows):
             sum_1 += x[j] * l_j[j]
+        term_1 = np.zeros(cols)
         for i in range(0,cols):
-            ln_gamma[i] = math.log(phi[i] / x[i]) + (Z/2) * q[i] * math.log(theta[i] / phi[i]) + \
-                          l_i[i] - ((phi[i] / x[i]) * sum_1) + \
-                          q[i] * (1 - math.log(E_i[i]) - D_i[i])
+            phi_over_x = Rred[i]  # = phi[i]/x[i], safe even when x[i] == 0
+            theta_over_phi = Qred[i] / Rred[i]
+            ln_gamma[i] = math.log(Rred[i]) + (Z/2) * q[i] * math.log(Qred[i]/Rred[i]) + \
+                          l_i[i] - (Rred[i] * sum_1) + (q[i] * (1 - math.log(E_i[i]) - D_i[i]))
 
         activity_co = np.exp(ln_gamma)
 
@@ -200,7 +183,7 @@ class UNIQUAC:
         X_II = x_ii.copy()
         Z = z.copy()
         Error = 1
-        epsillon = 1e-4
+        epsillon = 1e-3
         steps = 0
         max_steps = 133
         #store X_I and X_II for plotting tie lines
@@ -253,15 +236,17 @@ T_ji = UNI.binary_interaction(u,R,T)
 
 
 
-X_i = np.array([0.499999,0.000001,0.5])
-X_ii = np.array([0.2,0.1,0.7])
+X_i = np.array([0.5,0.0,0.5])
+X_ii = np.array([0.00,0.00,1.00])
 r = np.array([3.1878,2.5735,0.92])
 q = np.array([2.4,2.336,1.4])
 z = np.array([(0.5-(0.5e-10)),1e-10,0.5-(0.5e-10)])
 
+#gamma = UNI.gamma(X_i,r,q,R,T,u)
+#print(gamma)
 E = 0.5
 model = "UNIQUAC"
-x_I, x_II, iterations = UNI.liquid_comps(E,z,X_i,X_ii,1,r,q,R,T,u,model)
+#x_I, x_II, iterations = UNI.liquid_comps(E,z,X_i,X_ii,1,r,q,R,T,u,model)
 
 """print(x_I, "composition of Extract")
 print(x_II, "composition of Raffinate")
@@ -272,7 +257,8 @@ print(np.sum(x_I),"sum of Liquid phase 1")
 print(np.sum(x_II), "sum of liquid phase 2")
 """
 
-X_I_plait, X_II_plait,History_I,History_II = UNI.plait_point(E,z,x_I,x_II,1,r,q,R,T,u,model)
+"""
+X_I_plait, X_II_plait,History_I,History_II = UNI.plait_point(E,z,X_i,X_ii,1,r,q,R,T,u,model)
 
 print(X_I_plait)
 print(X_II_plait)
@@ -289,3 +275,4 @@ dh_II = pd.DataFrame(History_II)
 
 dh_I.to_csv("Phase_1_data.csv", index=False)
 dh_II.to_csv("Phase_2_data.csv", index=False)
+"""
