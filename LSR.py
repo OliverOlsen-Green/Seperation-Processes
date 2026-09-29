@@ -99,7 +99,7 @@ class Isotheral_Sum_Rates:
 
         # initalise error and tau for convergence check
         tau = 1
-        error = 0.001
+        error = 1e-12
 
         while tau > error:
             # find the Stripping factor from the inputs
@@ -150,7 +150,7 @@ class Isotheral_Sum_Rates:
 
             # find the new K values from normalised x and y
             K = Isotheral_Sum_Rates.K_factors(x_new_norm, y_new_norm, r, q, R, T, u)
-
+            #print(K)
             # Use K-values to find new y values
             y_New = K * x_new_norm
 
@@ -181,29 +181,29 @@ class Isotheral_Sum_Rates:
 
         # initalise error and tau for convergence check
         tau = 1
-        error = 0.001
+        error = 1e-12
 
         while tau > error:
             # get x,y,L_J,V_J values from the inner loop
-            x, y, L_J, V_J = Isotheral_Sum_Rates.Inner_Loop(x_I, x_ii, r, q, R, T, u, L_i, L_ii, F)
+            x, y, L_J, V_J = Isotheral_Sum_Rates.Inner_Loop(x_i, x_II, r, q, R, T, u, L_i, L_ii, F)
 
-            # print(L_J, "Liquid from innner loop")
-            # print(V_J, "Vapour from inner loop")
+            #print(L_J, "Liquid from innner loop")
+            #print(V_J, "Vapour from inner loop")
             # find the stripping factors from these
             S_factors = Isotheral_Sum_Rates.Stripping_Factor(x, y, r, q, R, T, u, L_J, V_J)
-            # print(y, "y values")
-            # find the new tear variable to recalc liquid flows per stage (V)
+            #print(y, "y values")
+            # find the new tear variable (V)
             V_New = np.zeros(Stages)
             y_sum = np.zeros(Stages)
             for j in range(0, Stages):
                 y_sum[j] = np.sum(y[j, :])
                 V_New[j] = V_J[j] * y_sum[j]
             # print(y_sum, "Summation of y")
-            # initalise tau and use the V_New values compared to inlet L_ii for the convergfence chejck 
+            # initalise tau and use the V_New values compared to inlet L_ii
             tau = 0.0
             for j in range(0, Stages):
                 tau += abs((((V_New[j] - L_ii[j]) / L_ii[j]) ** 2))
-            print(tau)
+            #print(tau)
 
             F_stage = np.zeros(Stages)
             F_sum = 0.0
@@ -222,150 +222,6 @@ class Isotheral_Sum_Rates:
             L_i = L_new
             L_ii = V_New
             x_i = x
-            x_ii = y
+            x_II = y
 
-        return L_i, L_ii,x_i, x_ii
-
-
-V = np.array([200., 192., 184., 176., 166., 150.])
-
-F = np.array([100., 0., 0., 0., 0., 150.])
-
-L = np.array([90., 82., 74., 66., 58., 50.])
-
-x = np.array([[0.02  , 0.5445, 0.4355],
-              [0.016 , 0.6014, 0.3826],
-              [0.012 , 0.6705, 0.3175],
-              [0.008 , 0.7559, 0.2361],
-              [0.008 , 0.8554, 0.1366],
-              [0.02  , 0.96  , 0.02  ]])
-
-z = np.array([[0. , 0.5, 0.5],
-              [0. , 0. , 0. ],
-              [0. , 0. , 0. ],
-              [0. , 0. , 0. ],
-              [0. , 0. , 0. ],
-              [1. , 0. , 0. ]])
-
-F_comp = np.array([[  0.,  50.,  50.],
-                    [  0.,   0.,   0.],
-                    [  0.,   0.,   0.],
-                    [  0.,   0.,   0.],
-                    [  0.,   0.,   0.],
-                    [150.,   0.,   0.]])
-
-y = Isotheral_Sum_Rates.y_guess(x,V,L,F,z)
-
-
-#print(y, "Initial y guess")
-Stages = 9
-
-
-R = 8.314
-T = 303.15
-
-r = np.array([3.1878,2.5735,0.92])
-q = np.array([2.4,2.336,1.4])
-u = np.array([
-    [0,295.280,907.180],
-    [-165.93,0,356.3],
-    [268.18,-78.297,0]
-])
-
-
-L_I,L_II,x_i,x_ii = Isotheral_Sum_Rates.Outer_Loop(x,y,r,q,R,T,u,L,V,F_comp)
-
-
-print(L_I, "Liquid flow phase 1")
-print(L_II, "Liquid flow phase 2")
-
-print(x_i, "composition of 1st liquid")
-
-print(x_ii, "composition of 2nd liquid")
-"""""
-section for debugging funcs, step by step
-K = Isotheral_Sum_Rates.K_factors(x,y,r,q,R,T,u)
-
-#print(K)
-
-S = Isotheral_Sum_Rates.Stripping_Factor(x,y,r,q,R,T,u,L,V)
-#print(S)
-
-#liqudi flowrates for each species
-l_ij= Thomas.Thomas(S,F_comp)
-
-v_ij = S * l_ij
-
-print(l_ij)
-
-print(v_ij)
-
-V_j = np.zeros(len(V))
-L_j = np.zeros(len(V))
-
-for i in range(0,len(V)):
-    V_j[i] = np.sum(v_ij[i,:])
-    L_j[i] = np.max(l_ij[i,:])
-
-print(V_j, "Vapour flows per stage")
-print(L_j, "Liquid flows per stage")
-Stages = 6
-Components = 3
-
-y_ji = Isotheral_Sum_Rates.Molar_mass_to_mol_frac(v_ij)
-x_ji = Isotheral_Sum_Rates.Molar_mass_to_mol_frac(l_ij)
-print(y_ji)
-print(x_ji)
-K_ji = Isotheral_Sum_Rates.K_factors(x_ji,y_ji,r,q,R,T,u)
-"""""
-"""""
-print(K_ji)
-#print(x_new)
-
-#x_frac = Isotheral_Sum_Rates.Molar_mass_to_mol_frac(x_new)
-
-#print(x_frac)
-
-#keep using this as a method to debug
-
-
-x_i, x_ii = Isotheral_Sum_Rates.Inner_Loop(x,y,r,q,R,T,u,L,V,F_comp)
-
-print(x_i, "x values from inner loop")
-
-print(x_ii, "y values from inner loop")
-S_new = Isotheral_Sum_Rates.Stripping_Factor(x_i,x_ii,r,q,R,T,u,L_j,V_j)
-
-
-
-print(S_new)
-
-print(y_new, "new y values")
-
-L_II_new = np.zeros(Stages)
-y_sum = np.zeros(Stages)
-for j in range(0,Stages):
-    y_sum[j] = np.sum(y_new[j,:])
-    L_II_new[j] = V[j] * (y_sum[j])
-
-print(y_sum)
-print(L_II_new, "new flow of liquid 2")
-tau = 0.0
-for j in range(0,Stages):
-    tau += ((L_II_new[j] - V[j]) /  V[j]) ** 2
-
-            #find L_I
-F_total =0.0
-L_I_new = np.zeros(Stages)
-F_stage = np.zeros(Stages)
-for i in range(0,Stages):
-    F_stage[i] = np.sum(F_comp[i,:])
-    F_total += F_stage[i]
-    if i == Stages - 1:
-        L_I_new[i] = F_total - L_II_new[0]
-    else:
-        L_I_new[i] = L_II_new[i + 1] + F_total - L_II_new[0]
-
-print(L_I_new, "new flows of liquid 1")
-print(tau)
-"""
+        return L_i, L_ii,x_i, x_II
