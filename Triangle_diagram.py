@@ -46,6 +46,14 @@ ax.plot(B_r,A_r,C_r)
 ax.plot(B_L,A_L,C_L)
 ax.plot(B_R,A_R,C_R)
 
+tie_lines = np.linspace(0, len(A_l) - 1, 20, dtype=int)   #40 tie lines up to -1 of the plait point
+
+for i in tie_lines:
+    ax.plot([B_l[i], B_r[i]], [A_l[i], A_r[i]], [C_l[i], C_r[i]],
+            color="grey", lw=0.8)
+
 ax.grid()
 
 plt.show()
+
+plt.savefig("LLE_Diagram.png")
