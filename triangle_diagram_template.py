@@ -17,7 +17,7 @@ data_II = data_II * 100
 benz_I, acet_I, wat_I = data_I[:, 0], data_I[:, 1], data_I[:, 2]
 benz_II, acet_II, wat_II = data_II[:, 0], data_II[:, 1], data_II[:, 2]
 
-fig = plt.figure(figsize=(20, 20))
+fig = plt.figure(figsize=(15, 10))
 ax = fig.add_subplot(projection="ternary", ternary_sum=100.0)
 
 ax.set_tlabel("Acetone")
