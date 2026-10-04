@@ -3,8 +3,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import mpltern
 
-data_I = pd.read_csv("Phase_1_data.csv").to_numpy()
-data_II = pd.read_csv("Phase_2_data.csv").to_numpy()
+data_I = pd.read_csv("Phase_1_data.csv").to_numpy()[1:]
+data_II = pd.read_csv("Phase_2_data.csv").to_numpy()[1:]
+
+# Multiply by 100 to match the 0-100 scale on the axes
+data_I = data_I * 100
+data_II = data_II * 100
 
 
 data_I = data_I * 100
@@ -13,7 +17,7 @@ data_II = data_II * 100
 benz_I, acet_I, wat_I = data_I[:, 0], data_I[:, 1], data_I[:, 2]
 benz_II, acet_II, wat_II = data_II[:, 0], data_II[:, 1], data_II[:, 2]
 
-fig = plt.figure(figsize=(8, 6))
+fig = plt.figure(figsize=(20, 20))
 ax = fig.add_subplot(projection="ternary", ternary_sum=100.0)
 
 ax.set_tlabel("Acetone")
