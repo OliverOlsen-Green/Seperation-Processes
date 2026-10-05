@@ -74,7 +74,25 @@ def in_window(x, lim):
     return np.array(keep)
 
 
-def draw_diagram(ax, size=1.0, lim=None):
+def planar_xy(comp):
+    comp = np.atleast_2d(comp)[0]
+    acet = comp[1] * 100
+    wat = comp[2] * 100
+    return wat + acet / 2, acet * np.sqrt(3) / 2
+
+
+def annotate(ax, comp, text, dx, dy, color="black", fontsize=15):
+    # always-on label with a leader line; (dx, dy) is the text offset from the point, in diagram units
+    px, py = planar_xy(comp)
+    t, l, r = to_ternary(comp)
+    at_t, at_l, at_r = planar_to_ternary(px + dx, py + dy)
+    ax.plot([t[0], at_t], [l[0], at_l], [r[0], at_r], color="0.35", lw=0.8, zorder=11, clip_on=False)
+    ax.text(at_t, at_l, at_r, text, color=color, fontsize=fontsize, ha="center", va="center", zorder=13,
+            fontweight="bold", clip_on=False,
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="0.6", lw=0.6, alpha=0.95))
+
+
+def draw_diagram(ax, size=1.0, lim=None, mb_line=True):
     ax.set_tlabel("Acetone", fontsize=18)
     ax.set_llabel("Benzene", fontsize=18)
     ax.set_rlabel("Water", fontsize=18)
@@ -95,7 +113,8 @@ def draw_diagram(ax, size=1.0, lim=None):
     ax.plot([0, 0], [100, 0], [0, 100], color="grey", lw=0.8, zorder=2)
 
     #LN - M - V1
-    stage_line(ax, x_LN, x_V1, color="0.15", lw=1.4 * size, ls=":", zorder=6)
+    if mb_line:
+        stage_line(ax, x_LN, x_V1, color="0.15", lw=1.4 * size, ls=":", zorder=6)
 
     #operating lines (L_j - V_j+1) pointing toa difference point
     for (x_L, y_V) in ops:
@@ -200,7 +219,13 @@ plt.savefig("Hunter_Nash_Zoom.png", dpi=150, bbox_inches="tight", pad_inches=0.4
 # ---------------- difference point: the operating lines are extended until they meet in Delta ----------------
 fig3 = plt.figure(figsize=(26, 8))
 ax_d = fig3.add_axes([0.03, 0.12, 0.25, 0.78], projection="ternary", ternary_sum=100.0)
-draw_diagram(ax_d, 0.9)
+draw_diagram(ax_d, 0.9, mb_line=False)
+
+#overall mass balance: F + S = M = L_N + V_1. The S-F line and the L_N-V_1 line cross at the mixing point M
+MB_F_COLOR = "tab:red"
+MB_P_COLOR = "darkcyan"
+stage_line(ax_d, x_VN1, x_L0, color=MB_F_COLOR, lw=2.2, ls="-.", zorder=6)
+stage_line(ax_d, x_LN, x_V1, color=MB_P_COLOR, lw=2.2, ls="-.", zorder=6)
 
 #operating lines extended beyond the diagram, V_j+1 -> L_j -> Delta (the first one is V1 -> L0 -> Delta)
 operating_ends = [x_V1] + [y_V for (x_L, y_V) in ops]
@@ -218,8 +243,10 @@ planar_x = Delta[2] * 100 + Delta[1] * 50
 planar_y = Delta[1] * 100 * np.sqrt(3) / 2
 ax_d.text(*planar_to_ternary(planar_x, planar_y + 8), "point of difference", fontsize=16, ha="center", va="center",
           clip_on=False, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.9))
-label(ax_d, x_VN1, "V$_{N+1}$ (solvent)", (-8, -14), "black", 14)
-label(ax_d, x_L0, "L$_0$ (feed)", (76, 29), "black", 14)
+annotate(ax_d, x_VN1, "S (solvent)", 2, -15)
+annotate(ax_d, x_L0, "L$_0$ (feed)", 8, 8)
+annotate(ax_d, M, "M", 0, 8)
+annotate(ax_d, x_LN, "L$_N$ (raffinate)", 0, -15)
 label(ax_d, Vs[0], "V$_1$", (25, 31), V_color, 12)
 label(ax_d, Vs[1], "V$_2$", (13, 10.5), V_color, 12)
 label(ax_d, Vs[2], "V$_3$", (12, 3.9), V_color, 12)
@@ -230,15 +257,26 @@ label(ax_d, Ls[2], "L$_3$", (114.5, 3.5), L_color, 12)
 label(ax_d, Ls[3], "L$_4$", (117, -0.8), L_color, 12)
 
 handles_d = [
-    Line2D([], [], color="tab:blue", lw=2.2, label="UNIQUAC calculated"),
+    # equilibrium data
+    Line2D([], [], color="tab:blue", lw=2.2, label="UNIQUAC binodal curve"),
     Line2D([], [], color="red", marker="x", ls="none", ms=10, mew=2.5, label="plait point"),
     Line2D([], [], color="grey", lw=0.8, label="tie-lines"),
+    # streams
+    Line2D([], [], color="white", mec="black", marker="D", ls="none", ms=9, label="L$_0$ (feed)"),
+    Line2D([], [], color="white", mec="black", marker="v", ls="none", ms=10, label="solvent S = V$_{N+1}$"),
+    Line2D([], [], color="white", mec="black", marker="P", ls="none", ms=10, label="mixing point M"),
+    Line2D([], [], color="white", mec="black", marker="*", ls="none", ms=14, label="raffinate L$_N$ (1 wt% acetone)"),
+    Line2D([], [], color="tab:orange", mec="black", marker="o", ls="none", ms=10, label="extract stages V$_j$"),
+    Line2D([], [], color="tab:green", mec="black", marker="s", ls="none", ms=10, label="raffinate stages L$_j$"),
+    # construction lines
+    Line2D([], [], color=MB_F_COLOR, lw=2.2, ls="-.", label="mass balance line S - M - L$_0$"),
+    Line2D([], [], color=MB_P_COLOR, lw=2.2, ls="-.", label="mass balance line L$_N$ - M - V$_1$"),
     Line2D([], [], color="black", lw=2.4, label="stage tie-lines"),
     Line2D([], [], color="tab:purple", lw=1.4, ls="--", label="operating lines through $\\Delta$"),
-    Line2D([], [], color="tab:purple", mec="black", marker="o", ls="none", ms=14, label="point of difference"),
-    Line2D([], [], color="white", mec="black", marker="v", ls="none", ms=10, label="solvent V$_{N+1}$"),
+    Line2D([], [], color="tab:purple", mec="black", marker="o", ls="none", ms=14, label="point of difference $\\Delta$"),
 ]
-ax_d.legend(handles=handles_d, loc="upper left", bbox_to_anchor=(1.3, 1.0), frameon=False, fontsize=14)
+leg = ax_d.legend(handles=handles_d, loc="upper left", bbox_to_anchor=(2.15, 1.12), frameon=True, fancybox=False,
+                  edgecolor="0.6", framealpha=1.0, fontsize=14, labelspacing=0.7, borderpad=0.9)
 plt.savefig("Hunter_Nash_Delta.png", dpi=200, bbox_inches="tight", pad_inches=0.4)
 
 plt.show()

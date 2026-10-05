@@ -2,7 +2,7 @@ import numpy as np
 from UNIQUAC import UNIQUAC
 
 u = np.array([
-    [0.0, 907.180, 295.280],
+    [0.0, 295.280, 907.180],
     [-165.93, 0.0, 356.300],
     [268.16, -78.297, 0.0]
 ])
